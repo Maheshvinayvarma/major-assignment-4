@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Contour Plot</title>
+  <link href="style.css" rel="stylesheet" type="text/css" />
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+
+<body>
+  <div>
+    <label for="threshold">Contour Threshold</label>
+    <input type="range" min="10" max="20" value="20" step="2" id="thresholdInput" width="150px" />
+  </div>
+  <svg width="80%" viewbox="0 0 512 512"></svg>
+  <script>
+    const csvFilePath = "./data/Data_CT.csv";
+    const svgContainer = d3.select("svg");
+
+    d3.csv(csvFilePath).then(drawContour);
+
+    function drawContour(data) {
+      const dataValues = data.map((d) => +d[0]);
+
+      let numRows = 512;
+      let numCols = 512;
+
+      const dataExtent = d3.extent(dataValues);
+
+      function drawContours(thresholdValue) {
+        const contourGenerator = d3
+          .contours()
+          .size([numRows, numCols])
+          .thresholds(d3.range(dataExtent[0], dataExtent[1], thresholdValue));
+
+        const contours = contourGenerator(dataValues);
+
+        const pathGenerator = d3.geoPath();
+
+        let contourExtent = d3.extent(contours, (d) => d.value);
+
+        const mid = 346;
+
+        const colorInterpolator = d3.scaleDiverging()
+          .domain([contourExtent[0], mid, contourExtent[1]])
+          .interpolator(d3.interpolatePlasma);
+
+        svgContainer
+          .selectAll("path")
+          .data(contours)
+          .enter()
+          .append("path")
+          .attr("d", pathGenerator)
+          .attr("stroke", "black")
+          .attr("fill", (d) => 180 < d.value ? colorInterpolator(d.value) : "#fff")
+          .attr("stroke-linejoin", "round")
+          .attr("stroke-width", d => 180 > d.value ? "0px" : "0.05px");
+      }
+
+      drawContours(20);
+
+      d3.select("#thresholdInput").on("input", (event) => {
+        svgContainer.selectAll("*").remove();
+        drawContours(event.target.value);
+      });
+    }
+  </script>
+</body>
+
+</html>
